@@ -1,19 +1,16 @@
 module bp_piton_top
  import bsg_wormhole_router_pkg::*;
  import bp_common_pkg::*;
- import bp_common_aviary_pkg::*;
  import bp_be_pkg::*;
  import bp_fe_pkg::*;
- import bp_common_rv64_pkg::*;
  import bp_me_pkg::*;
- import bp_cce_pkg::*;
  import bp_pce_pkg::*;
  import bsg_noc_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_piton_cfg // Warning: Change this at your own peril!
    `declare_bp_proc_params(bp_params_p)
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, icache_fill_width_p, lce_id_width_p, lce_assoc_p, pce)
    //`declare_bp_me_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p)
-   `declare_bp_pce_l15_if_widths(paddr_width_p, dword_width_p)
+   `declare_bp_pce_l15_if_widths(paddr_width_p, dword_width_gp)
 
    , localparam cce_instr_ram_addr_width_lp = `BSG_SAFE_CLOG2(num_cce_instr_ram_els_p)
    )
@@ -32,7 +29,7 @@ module bp_piton_top
    , output logic [2:0]                                transducer_l15_size
    , output logic                                      transducer_l15_val
    , output logic [paddr_width_p-1:0]                  transducer_l15_address
-   , output logic [dword_width_p-1:0]                  transducer_l15_data
+   , output logic [dword_width_gp-1:0]                 transducer_l15_data
    , output logic [1:0]                                transducer_l15_l1rplway
    , output logic                                      transducer_l15_threadid
    , output logic [3:0]                                transducer_l15_amo_op
@@ -40,17 +37,17 @@ module bp_piton_top
    , output logic                                      transducer_l15_invalidate_cacheline
    , output logic                                      transducer_l15_blockstore
    , output logic                                      transducer_l15_blockinitstore
-   , output logic [dword_width_p-1:0]                  transducer_l15_data_next_entry
+   , output logic [dword_width_gp-1:0]                 transducer_l15_data_next_entry
    , output logic [32:0]                               transducer_l15_csm_data
    , input                                             l15_transducer_ack
    
    // L1.5 -> Transducer
    , input                                             l15_transducer_val
    , input [3:0]                                       l15_transducer_returntype
-   , input [dword_width_p-1:0]                         l15_transducer_data_0
-   , input [dword_width_p-1:0]                         l15_transducer_data_1
-   , input [dword_width_p-1:0]                         l15_transducer_data_2
-   , input [dword_width_p-1:0]                         l15_transducer_data_3
+   , input [dword_width_gp-1:0]                        l15_transducer_data_0
+   , input [dword_width_gp-1:0]                        l15_transducer_data_1
+   , input [dword_width_gp-1:0]                        l15_transducer_data_2
+   , input [dword_width_gp-1:0]                        l15_transducer_data_3
    , input                                             l15_transducer_noncacheable
    , input                                             l15_transducer_atomic
    , input                                             l15_transducer_threadid 
@@ -63,19 +60,19 @@ module bp_piton_top
    , output logic                                      transducer_l15_req_ack
    );
 
-  `declare_bp_cfg_bus_s(vaddr_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p, cce_pc_width_p, cce_instr_width_p);
+  `declare_bp_cfg_bus_s(domain_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
   //`declare_bp_me_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p)
-  `declare_bp_fe_be_if(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p);
+  `declare_bp_core_if(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p);
 
-  `declare_bp_cache_service_if(paddr_width_p, ptag_width_p, dcache_sets_p, dcache_assoc_p, dword_width_p, dcache_block_width_p, dcache_fill_width_p, dcache);
-  `declare_bp_cache_service_if(paddr_width_p, ptag_width_p, icache_sets_p, icache_assoc_p, dword_width_p, icache_block_width_p, icache_fill_width_p, icache);
+  `declare_bp_cache_engine_if(paddr_width_p, ctag_width_p, dcache_sets_p, dcache_assoc_p, dword_width_gp, dcache_block_width_p, dcache_fill_width_p, dcache);
+  `declare_bp_cache_engine_if(paddr_width_p, ctag_width_p, icache_sets_p, icache_assoc_p, dword_width_gp, icache_block_width_p, icache_fill_width_p, icache);
   `declare_bp_bedrock_mem_if(paddr_width_p, icache_fill_width_p, lce_id_width_p, lce_assoc_p, pce);
-  `declare_bp_pce_l15_if(paddr_width_p, dword_width_p);
+  `declare_bp_pce_l15_if(paddr_width_p, dword_width_gp);
 
   bp_dcache_req_s dcache_req_lo;
   bp_icache_req_s icache_req_lo;
-  logic dcache_req_v_lo, dcache_req_ready_li;
-  logic icache_req_v_lo, icache_req_ready_li;
+  logic dcache_req_v_lo, dcache_req_yumi_li, dcache_req_busy_li, dcache_req_credits_full_li, dcache_req_credits_empty_li;
+  logic icache_req_v_lo, icache_req_yumi_li, icache_req_busy_li, icache_req_credits_full_li, icache_req_credits_empty_li;
 
   bp_dcache_req_metadata_s dcache_req_metadata_lo;
   bp_icache_req_metadata_s icache_req_metadata_lo;
@@ -102,8 +99,7 @@ module bp_piton_top
   bp_icache_stat_info_s icache_stat_mem_lo;
 
   logic dcache_req_complete_li, icache_req_complete_li;
-
-  logic [1:0] credits_full_li, credits_empty_li;
+  logic dcache_req_critical_li, icache_req_critical_li;
 
   bp_pce_l15_req_s [1:0] pce_l15_req_lo;
   logic [1:0] pce_l15_req_v_lo, pce_l15_req_ready_li;
@@ -118,11 +114,10 @@ module bp_piton_top
   logic cfg_resp_v_lo, cfg_resp_yumi_li;
 
   bp_cfg_bus_s cfg_bus_lo;
-  logic [dword_width_p-1:0] cfg_irf_data_li;
-  logic [vaddr_width_p-1:0] cfg_npc_data_li;
-  logic [dword_width_p-1:0] cfg_csr_data_li;
-  logic [1:0]               cfg_priv_data_li;
-  logic [cce_instr_width_p-1:0] cfg_cce_ucode_data_li;
+  logic [dword_width_gp-1:0] cfg_irf_data_li;
+  logic [vaddr_width_p-1:0]  cfg_npc_data_li;
+  logic [dword_width_gp-1:0] cfg_csr_data_li;
+  logic [1:0]                cfg_priv_data_li;
 
   bp_fe_queue_s fe_queue_li;
   logic fe_queue_v_li, fe_queue_ready_lo;
@@ -148,11 +143,14 @@ module bp_piton_top
 
      ,.cache_req_o(icache_req_lo)
      ,.cache_req_v_o(icache_req_v_lo)
-     ,.cache_req_ready_i(icache_req_ready_li)
+     ,.cache_req_yumi_i(icache_req_yumi_li)
+     ,.cache_req_busy_i(icache_req_busy_li)
      ,.cache_req_metadata_o(icache_req_metadata_lo)
      ,.cache_req_metadata_v_o(icache_req_metadata_v_lo)
      ,.cache_req_complete_i(icache_req_complete_li)
      ,.cache_req_critical_i(icache_req_critical_li)
+     ,.cache_req_credits_full_i(icache_req_credits_full_li)
+     ,.cache_req_credits_empty_i(icache_req_credits_empty_li)
 
      ,.data_mem_pkt_i(icache_data_mem_pkt_li)
      ,.data_mem_pkt_v_i(icache_data_mem_pkt_v_li)
@@ -188,12 +186,15 @@ module bp_piton_top
 
      ,.cache_req_o(dcache_req_lo)
      ,.cache_req_v_o(dcache_req_v_lo)
-     ,.cache_req_ready_i(dcache_req_ready_li)
+     ,.cache_req_yumi_i(dcache_req_yumi_li)
+     ,.cache_req_busy_i(dcache_req_busy_li)
      ,.cache_req_metadata_o(dcache_req_metadata_lo)
      ,.cache_req_metadata_v_o(dcache_req_metadata_v_lo)
 
      ,.cache_req_complete_i(dcache_req_complete_li)
      ,.cache_req_critical_i(dcache_req_critical_li)
+     ,.cache_req_credits_full_i(dcache_req_credits_full_li)
+     ,.cache_req_credits_empty_i(dcache_req_credits_empty_li)
 
      ,.data_mem_pkt_i(dcache_data_mem_pkt_li)
      ,.data_mem_pkt_v_i(dcache_data_mem_pkt_v_li)
@@ -209,9 +210,6 @@ module bp_piton_top
      ,.stat_mem_pkt_v_i(dcache_stat_mem_pkt_v_li)
      ,.stat_mem_pkt_yumi_o(dcache_stat_mem_pkt_yumi_lo)
      ,.stat_mem_o(dcache_stat_mem_lo)
-
-     ,.credits_full_i(credits_full_li[1])
-     ,.credits_empty_i(credits_empty_li[1])
 
      ,.timer_irq_i(timer_irq_i)
      ,.software_irq_i(software_irq_i)
@@ -235,10 +233,14 @@ module bp_piton_top
 
     ,.cache_req_i(dcache_req_lo)
     ,.cache_req_v_i(dcache_req_v_lo)
-    ,.cache_req_ready_o(dcache_req_ready_li)
+    ,.cache_req_yumi_o(dcache_req_yumi_li)
+    ,.cache_req_busy_o(dcache_req_busy_li)
     ,.cache_req_metadata_i(dcache_req_metadata_lo)
     ,.cache_req_metadata_v_i(dcache_req_metadata_v_lo)
     ,.cache_req_complete_o(dcache_req_complete_li)
+    ,.cache_req_critical_o(dcache_req_critical_li)
+    ,.cache_req_credits_full_o(dcache_req_credits_full_li)
+    ,.cache_req_credits_empty_o(dcache_req_credits_empty_li)
 
     ,.cache_tag_mem_pkt_o(dcache_tag_mem_pkt_li)
     ,.cache_tag_mem_pkt_v_o(dcache_tag_mem_pkt_v_li)
@@ -251,9 +253,6 @@ module bp_piton_top
     ,.cache_stat_mem_pkt_o(dcache_stat_mem_pkt_li)
     ,.cache_stat_mem_pkt_v_o(dcache_stat_mem_pkt_v_li)
     ,.cache_stat_mem_pkt_yumi_i(dcache_stat_mem_pkt_yumi_lo)
-
-    ,.credits_full_o(credits_full_li[1])
-    ,.credits_empty_o(credits_empty_li[1])
 
     ,.pce_l15_req_v_o(pce_l15_req_v_lo[1])
     ,.pce_l15_req_o(pce_l15_req_lo[1])
@@ -281,10 +280,14 @@ module bp_piton_top
 
     ,.cache_req_i(icache_req_lo)
     ,.cache_req_v_i(icache_req_v_lo)
-    ,.cache_req_ready_o(icache_req_ready_li)
+    ,.cache_req_yumi_o(icache_req_yumi_li)
+    ,.cache_req_busy_o(icache_req_busy_li)
     ,.cache_req_metadata_i(icache_req_metadata_lo)
     ,.cache_req_metadata_v_i(icache_req_metadata_v_lo)
     ,.cache_req_complete_o(icache_req_complete_li)
+    ,.cache_req_critical_o(icache_req_critical_li)
+    ,.cache_req_credits_full_o(icache_req_credits_full_li)
+    ,.cache_req_credits_empty_o(icache_req_credits_empty_li)
 
     ,.cache_tag_mem_pkt_o(icache_tag_mem_pkt_li)
     ,.cache_tag_mem_pkt_v_o(icache_tag_mem_pkt_v_li)
@@ -297,9 +300,6 @@ module bp_piton_top
     ,.cache_stat_mem_pkt_o(icache_stat_mem_pkt_li)
     ,.cache_stat_mem_pkt_v_o(icache_stat_mem_pkt_v_li)
     ,.cache_stat_mem_pkt_yumi_i(icache_stat_mem_pkt_yumi_lo)
-
-    ,.credits_full_o(credits_full_li[0])
-    ,.credits_empty_o(credits_empty_li[0])
 
     ,.pce_l15_req_v_o(pce_l15_req_v_lo[0])
     ,.pce_l15_req_o(pce_l15_req_lo[0])
@@ -486,7 +486,7 @@ module bp_piton_top
     l15_pce_ret_v_li[0] = '0;
     l15_pce_ret_v_li[1] = '0;
 
-    if ((fifo_pce_lo.rtntype != e_load_ret) && (fifo_pce_lo.rtntype != e_st_ack)) begin
+    if (!((fifo_pce_lo.rtntype == e_load_ret) || (fifo_pce_lo.rtntype == e_st_ack) || (fifo_pce_lo.rtntype == e_atomic_ret))) begin
       l15_pce_ret_v_li[0] = fifo_pce_v_lo;
     end
 

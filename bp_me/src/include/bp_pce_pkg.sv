@@ -8,6 +8,6 @@
 
 package bp_pce_pkg;
 
-  `include "bp_pce_l15_if.vh"
+  `include "bp_pce_l15_if.svh"
 
 endpackage : bp_pce_pkg
