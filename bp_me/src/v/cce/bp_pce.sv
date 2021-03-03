@@ -242,6 +242,12 @@ module bp_pce
      ,.data_o(count_start_r)
      );
 
+  // Need to check if incoming response is for a no return amo
+  // Counter is incremented when a no return amo is accepted
+  // Counter is decremented when the response is an amo_ret and the counter is not zero
+  // since the response for a blocking request would arrive after the responses for all 
+  // the previous non blocking requests
+
   wire up_li   = no_return_amo_v_li & cache_req_yumi_o;
   wire down_li = is_amo_op_ret & (no_return_count_lo != '0);
   bsg_counter_up_down
@@ -258,6 +264,7 @@ module bp_pce
      ,.count_o(no_return_count_lo)
      );
 
+  // Accept the response immediately if the counter is not zero and it is an amo_ret
   assign no_return_ret_yumi_lo = is_amo_op_ret & (no_return_count_lo != '0);
   
   always_comb
