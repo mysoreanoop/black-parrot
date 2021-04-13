@@ -133,7 +133,6 @@ module bp_be_dcache
 
    // ctrl
    , input                             flush_i
-   , output                            replay_pending_o
 
    // D$ Engine Interface
    , output logic [dcache_req_width_lp-1:0]          cache_req_o
@@ -1273,7 +1272,6 @@ module bp_be_dcache
      ,.clear_i(uncached_pending_clear)
      ,.data_o(uncached_pending_r)
      );
-  assign replay_pending_o = uncached_pending_r;
 
   wire uncached_load_data_set = data_mem_pkt_yumi_o & (data_mem_pkt_cast_i.opcode == e_cache_data_mem_uncached);
   bsg_dff_en

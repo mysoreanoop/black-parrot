@@ -46,7 +46,6 @@ module bp_be_calculator_top
   , output logic                                    long_ready_o
   , output logic                                    mem_ready_o
   , output logic                                    ptw_busy_o
-  , output logic                                    replay_pending_o
   , output logic [decode_info_width_lp-1:0]         decode_info_o
   , input                                           cmd_full_n_i
 
@@ -330,7 +329,6 @@ module bp_be_calculator_top
      ,.final_v_o(pipe_mem_final_data_lo_v)
 
      ,.trans_info_i(trans_info_lo)
-     ,.replay_pending_o(replay_pending_o)
      );
 
   // Floating point pipe: 4/5 cycle latency
