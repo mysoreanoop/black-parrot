@@ -361,7 +361,7 @@ module bp_be_dcache
 
   // Snoop logic
   logic [dword_width_gp-1:0] snoop_word;
-  wire [snoop_offset_width_lp-1:0] snoop_word_offset = paddr_tl[3+:snoop_offset_width_lp];
+  wire [snoop_offset_width_lp-1:0] snoop_word_offset = paddr_tv_r[3+:snoop_offset_width_lp];
   bsg_mux
    #(.width_p(dword_width_gp), .els_p(fill_width_p/dword_width_gp))
    snoop_mux
@@ -378,6 +378,18 @@ module bp_be_dcache
     (.data_i({snoop_data_lo, data_mem_data_lo})
      ,.sel_i(cache_req_critical_i)
      ,.data_o(ld_data_tv_n)
+     );
+
+  // TODO: add cache_req signal for tag completion
+  logic [assoc_p-1:0] way_v_tv_n, store_hit_tv_n, load_hit_tv_n;
+  wire uncached_hit_tv_n = tag_mem_pkt_yumi_o;
+  wire [assoc_p-1:0] tag_mem_pseudo_hit = 1'b1 << tag_mem_pkt_cast_i.way_id;
+  bsg_mux
+   #(.width_p(3*assoc_p), .els_p(2))
+   hit_mux
+    (.data_i({{3{tag_mem_pseudo_hit}}, {way_v_tl, store_hit_tl, load_hit_tl}})
+     ,.sel_i(tag_mem_pkt_yumi_o)
+     ,.data_o({way_v_tv_n, store_hit_tv_n, load_hit_tv_n})
      );
 
   // fencei does not require a ptag
@@ -399,7 +411,7 @@ module bp_be_dcache
    #(.width_p(block_width_p))
    ld_data_tv_reg
     (.clk_i(~clk_i)
-     ,.en_i((tv_we & decode_tl_r.load_op) | cache_req_critical_i)
+     ,.en_i(tv_we | cache_req_critical_i)
      ,.data_i(ld_data_tv_n)
      ,.data_o(ld_data_tv_r)
      );
@@ -408,8 +420,9 @@ module bp_be_dcache
    #(.width_p(1+3*assoc_p))
    hit_tv_reg
     (.clk_i(~clk_i)
-     ,.en_i(tv_we | cache_req_critical_i)
-     ,.data_i({cache_req_critical_i, (way_v_tl | cache_req_critical_i), (store_hit_tl | cache_req_critical_i), (load_hit_tl | cache_req_critical_i)})
+     // TODO: add cache_req signal for tag completion
+     ,.en_i(tv_we | tag_mem_pkt_yumi_o)
+     ,.data_i({uncached_hit_tv_n, way_v_tv_n, store_hit_tv_n, load_hit_tv_n})
      ,.data_o({uncached_hit_tv_r, way_v_tv_r, store_hit_tv_r, load_hit_tv_r})
      );
 
@@ -417,7 +430,7 @@ module bp_be_dcache
    #(.width_p(dword_width_gp))
    st_data_tv_reg
     (.clk_i(~clk_i)
-     ,.en_i(tv_we & decode_tl_r.store_op)
+     ,.en_i(tv_we)
      ,.data_i(st_data_tl)
      ,.data_o(st_data_tv_r)
      );
@@ -1094,11 +1107,11 @@ module bp_be_dcache
         : {data_mem_mask_width_lp{data_mem_write_bank_mask[i]}};
 
       wire [bindex_width_lp-1:0] data_mem_pkt_offset = (bindex_width_lp'(i) - data_mem_pkt_cast_i.way_id);
-      assign data_mem_addr_li[i] = data_mem_fast_read[i]
-        ? {vaddr_index, {(assoc_p > 1){vaddr_bank}}}
-        : (wbuf_yumi_li & wbuf_bank_sel_one_hot[i])
-          ? {wbuf_entry_out_index, {(assoc_p > 1){wbuf_entry_out_bank_offset}}}
-          : {data_mem_pkt_cast_i.index, {(assoc_p > 1){data_mem_pkt_offset}}};
+      assign data_mem_addr_li[i] = (wbuf_yumi_li & wbuf_bank_sel_one_hot[i])
+        ? {wbuf_entry_out_index, {(assoc_p > 1){wbuf_entry_out_bank_offset}}}
+        : (data_mem_slow_read[i] | data_mem_slow_write[i])
+          ? {data_mem_pkt_cast_i.index, {(assoc_p > 1){data_mem_pkt_offset}}}
+          : {vaddr_index, {(assoc_p > 1){vaddr_bank}}};
 
       assign data_mem_data_li[i] = (wbuf_yumi_li & wbuf_bank_sel_one_hot[i])
         ? {num_dwords_per_bank_lp{wbuf_entry_out.data}}
@@ -1113,7 +1126,8 @@ module bp_be_dcache
   // A similar scheme could be adopted for a non-blocking version, where we snoop the bank
   assign data_mem_pkt_yumi_o = (data_mem_pkt_cast_i.opcode == e_cache_data_mem_uncached)
                                ? ~cache_lock & data_mem_pkt_v_i
-                               : ~cache_lock & data_mem_pkt_v_i & ~|data_mem_fast_read & ~wbuf_v_lo & ~wbuf_v_li;
+                               : ~cache_lock & data_mem_pkt_v_i & ~|data_mem_fast_read & ~wbuf_v_lo;
+                               //wbuf_v_li
 
 
   logic [lg_dcache_assoc_lp-1:0] data_mem_pkt_way_r;
