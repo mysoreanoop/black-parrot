@@ -1,0 +1,36 @@
+`ifndef BP_COMMON_RV64_DEBUG_DEFINES_SVH
+
+  `define DEBUG_ADDR_DATA0        0x04
+  `define DEBUG_ADDR_DATA1        0x08
+  `define DEBUG_ADDR_DMCONTROL    0x10
+  `define DEBUG_ADDR_DMSTATUS     0x11
+  `define DEBUG_ADDR_HARTINFO     0x12
+  `define DEBUG_ADDR_HALTSUM1     0x13
+  `define DEBUG_ADDR_HAWINDOWSEL  0x14
+  `define DEBUG_ADDR_HAWINDOW     0x15
+  `define DEBUG_ADDR_ABSTRACTCS   0x16
+  `define DEBUG_ADDR_COMMAND      0x17
+  `define DEBUG_ADDR_ABSTRACTAUTO 0x18
+  `define DEBUG_ADDR_CONFSTRPTR0  0x19
+  `define DEBUG_ADDR_CONFSTRPTR1  0x1a
+  `define DEBUG_ADDR_CONFSTRPTR2  0x1b
+  `define DEBUG_ADDR_CONFSTRPTR3  0x1c
+  `define DEBUG_ADDR_NEXTDM       0x1d
+  `define DEBUG_ADDR_PROGBUF0     0x20
+  `define DEBUG_ADDR_PROGBUF15    0x2f
+  `define DEBUG_ADDR_AUTHDATA     0x30
+  `define DEBUG_ADDR_HALTSUM2     0x34
+  `define DEBUG_ADDR_HALTSUM3     0x35
+  `define DEBUG_ADDR_SBADDRESS3   0x37
+  `define DEBUG_ADDR_SBCS         0x38
+  `define DEBUG_ADDR_SBADDRESS0   0x39
+  `define DEBUG_ADDR_SBADDRESS1   0x3a
+  `define DEBUG_ADDR_SBADDRESS2   0x3b
+  `define DEBUG_ADDR_SBDATA0      0x3c
+  `define DEBUG_ADDR_SBDATA1      0x3d
+  `define DEBUG_ADDR_SBDATA2      0x3e
+  `define DEBUG_ADDR_SBDATA3      0x3f
+  `define DEBUG_ADDR_HALTSUM0     0x40
+
+`endif
+

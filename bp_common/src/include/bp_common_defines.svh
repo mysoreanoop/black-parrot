@@ -8,8 +8,9 @@
   `include "bp_common_addr_defines.svh"
   `include "bp_common_cfg_bus_defines.svh"
   `include "bp_common_log_defines.svh"
-  `include "bp_common_rv64_instr_defines.svh"
   `include "bp_common_rv64_csr_defines.svh"
+  `include "bp_common_rv64_debug_defines.svh"
+  `include "bp_common_rv64_instr_defines.svh"
 
 `endif
 
