@@ -359,6 +359,43 @@ module bp_be_dcache
   wire [sindex_width_lp-1:0] paddr_index_tv = paddr_tv_r[block_offset_width_lp+:sindex_width_lp];
   wire [ctag_width_p-1:0]    paddr_tag_tv   = paddr_tv_r[block_offset_width_lp+sindex_width_lp+:ctag_width_p];
 
+  // TODO: add cache_req signal for tag completion
+  logic [assoc_p-1:0] way_v_tv_n, store_hit_tv_n, load_hit_tv_n;
+  wire uncached_hit_tv_n = cache_req_critical_tag_i;
+  wire [assoc_p-1:0] tag_mem_pseudo_hit = 1'b1 << tag_mem_pkt_cast_i.way_id;
+  bsg_mux
+   #(.width_p(3*assoc_p), .els_p(2))
+   hit_mux
+    (.data_i({{3{tag_mem_pseudo_hit}}, {way_v_tl, store_hit_tl, load_hit_tl}})
+     ,.sel_i(cache_req_critical_tag_i)
+     ,.data_o({way_v_tv_n, store_hit_tv_n, load_hit_tv_n})
+     );
+
+  bsg_dff_reset_en
+   #(.width_p(1+3*assoc_p))
+   hit_tv_reg
+    (.clk_i(~clk_i)
+     ,.reset_i(reset_i)
+     ,.en_i(tv_we | cache_req_critical_tag_i)
+     ,.data_i({uncached_hit_tv_n, way_v_tv_n, store_hit_tv_n, load_hit_tv_n})
+     ,.data_o({uncached_hit_tv_r, way_v_tv_r, store_hit_tv_r, load_hit_tv_r})
+     );
+
+  // fencei does not require a ptag
+  assign safe_tv_we = v_tl_r & (ptag_v_i | decode_tl_r.fencei_op);
+  assign tv_we = safe_tv_we & ~flush_self;
+  wire tv_resume = (state_r == e_miss) & cache_req_complete_i;
+  bsg_dff_reset_set_clear
+   #(.width_p(1))
+   v_tv_reg
+    (.clk_i(~clk_i)
+     ,.reset_i(reset_i)
+     ,.set_i(tv_we | tv_resume)
+     // We always advance in the non-stalling D$
+     ,.clear_i(1'b1)
+     ,.data_o(v_tv_r)
+     );
+
   // Snoop logic
   logic [dword_width_gp-1:0] snoop_word;
   wire [snoop_offset_width_lp-1:0] snoop_word_offset = paddr_tv_r[3+:snoop_offset_width_lp];
@@ -376,34 +413,8 @@ module bp_be_dcache
    #(.width_p(block_width_p), .els_p(2))
    ld_data_mux
     (.data_i({snoop_data_lo, data_mem_data_lo})
-     ,.sel_i(cache_req_critical_i)
+     ,.sel_i(cache_req_critical_data_i)
      ,.data_o(ld_data_tv_n)
-     );
-
-  // TODO: add cache_req signal for tag completion
-  logic [assoc_p-1:0] way_v_tv_n, store_hit_tv_n, load_hit_tv_n;
-  wire uncached_hit_tv_n = tag_mem_pkt_yumi_o;
-  wire [assoc_p-1:0] tag_mem_pseudo_hit = 1'b1 << tag_mem_pkt_cast_i.way_id;
-  bsg_mux
-   #(.width_p(3*assoc_p), .els_p(2))
-   hit_mux
-    (.data_i({{3{tag_mem_pseudo_hit}}, {way_v_tl, store_hit_tl, load_hit_tl}})
-     ,.sel_i(tag_mem_pkt_yumi_o)
-     ,.data_o({way_v_tv_n, store_hit_tv_n, load_hit_tv_n})
-     );
-
-  // fencei does not require a ptag
-  assign safe_tv_we = v_tl_r & (ptag_v_i | decode_tl_r.fencei_op);
-  assign tv_we = safe_tv_we & ~flush_self;
-  bsg_dff_reset_set_clear
-   #(.width_p(1))
-   v_tv_reg
-    (.clk_i(~clk_i)
-     ,.reset_i(reset_i)
-     ,.set_i(tv_we | cache_req_critical_i)
-     // We always advance in the non-stalling D$
-     ,.clear_i(1'b1)
-     ,.data_o(v_tv_r)
      );
 
   // TODO: We can combine the load data and store data
@@ -411,19 +422,9 @@ module bp_be_dcache
    #(.width_p(block_width_p))
    ld_data_tv_reg
     (.clk_i(~clk_i)
-     ,.en_i(tv_we | cache_req_critical_i)
+     ,.en_i(tv_we | cache_req_critical_data_i)
      ,.data_i(ld_data_tv_n)
      ,.data_o(ld_data_tv_r)
-     );
-
-  bsg_dff_en
-   #(.width_p(1+3*assoc_p))
-   hit_tv_reg
-    (.clk_i(~clk_i)
-     // TODO: add cache_req signal for tag completion
-     ,.en_i(tv_we | tag_mem_pkt_yumi_o)
-     ,.data_i({uncached_hit_tv_n, way_v_tv_n, store_hit_tv_n, load_hit_tv_n})
-     ,.data_o({uncached_hit_tv_r, way_v_tv_r, store_hit_tv_r, load_hit_tv_r})
      );
 
   bsg_dff_en
