@@ -193,11 +193,11 @@ module bp_be_ptw
       eIdle:      state_n = tlb_miss_v ? eSendLoad : eIdle;
       eSendLoad:  state_n = dcache_ready_i ? eWaitLoad : eSendLoad;
       eWaitLoad:  state_n = eRecvLoad;
-      eRecvLoad:  state_n = (dcache_v_r
-                             ? (page_fault_v
-                                ? eIdle
-                                : (pte_is_leaf ? eWriteBack : eSendLoad))
-                             : eSendLoad);
+      eRecvLoad:  state_n = dcache_v_r
+                            ? page_fault_v
+                              ? eIdle
+                              : (pte_is_leaf ? eWriteBack : eSendLoad)
+                            : eRecvLoad;
       eWriteBack: state_n = eIdle;
       default: state_n = eIdle;
     endcase
