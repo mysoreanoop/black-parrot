@@ -126,10 +126,15 @@ module bp_be_dcache
    , input                            ptag_v_i
    , input                            ptag_uncached_i
 
-   , output logic [dpath_width_gp-1:0] early_data_o
-   , output logic                      early_v_o
-   , output logic [dpath_width_gp-1:0] final_data_o
-   , output logic                      final_v_o
+   , output logic [dpath_width_gp-1:0]    early_data_o
+   , output logic                         early_v_o
+   , output logic [dpath_width_gp-1:0]    final_data_o
+   , output logic                         final_v_o
+   , output logic [reg_addr_width_gp-1:0] late_rd_addr_o
+   , output logic                         late_float_o
+   , output logic [dpath_width_gp-1:0]    late_data_o
+   , output logic                         late_v_o
+   , input                                late_yumi_i
 
    // ctrl
    , input                             flush_i
@@ -1283,6 +1288,11 @@ module bp_be_dcache
      ,.data_i(data_mem_pkt_cast_i.data[0+:dword_width_gp])
      ,.data_o(uncached_load_data_r)
      );
+
+  assign late_rd_addr_o = '0;
+  assign late_float_o   = '0;
+  assign late_data_o    = '0;
+  assign late_v_o       = '0;
 
   // synopsys translate_off
   `declare_bp_cfg_bus_s(hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
