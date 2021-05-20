@@ -1,7 +1,8 @@
+`include "bsg_defines.v"
 
 module bsg_bus_pack
  #(// Width of the entire bus
-   parameter width_p = "inv"
+   `BSG_INV_PARAM(width_p)
 
    // Selection granularity of the bus, default to byte width
    , parameter unit_width_p       = 8

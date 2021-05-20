@@ -8,9 +8,9 @@ module bp_lite_to_burst
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
 
-   , parameter in_data_width_p  = "inv"
-   , parameter out_data_width_p = "inv"
-   , parameter payload_width_p  = "inv"
+   , parameter `BSG_INV_WIDTH(in_data_width_p)
+   , parameter `BSG_INV_WIDTH(out_data_width_p)
+   , parameter `BSG_INV_WIDTH(payload_width_p)
 
    // Bitmask which determines which message types have a data payload
    // Constructed as (1 << e_payload_msg1 | 1 << e_payload_msg2)
