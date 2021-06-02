@@ -626,6 +626,20 @@ module testbench
               ,.lce_cmd_o_ready_and_i(lce_cmd_ready_then_i)
               );
 
+          if (cce_ucode_p) begin
+            bind bp_cce
+              bp_me_nonsynth_cce_inst_tracer
+                #(.bp_params_p(bp_params_p)
+                  )
+                cce_inst_tracer
+                (.clk_i(clk_i & testbench.cce_trace_en_lo)
+                 ,.reset_i(reset_i)
+                 ,.cce_id_i(cfg_bus_cast_i.cce_id)
+                 ,.fetch_pc_i(fetch_pc_lo)
+                 ,.instruction_v_i(fetch_inst_v_lo)
+                 ,.instruction_i(fetch_inst_lo)
+                 );
+          end
         end
     end
 
