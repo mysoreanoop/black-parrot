@@ -626,6 +626,8 @@ module testbench
               ,.lce_cmd_o_ready_and_i(lce_cmd_ready_then_i)
               );
 
+          // CCE instruction tracer
+          // this is connected to the instruction registered in the EX stage
           if (cce_ucode_p) begin
             bind bp_cce
               bp_me_nonsynth_cce_inst_tracer
@@ -635,9 +637,9 @@ module testbench
                 (.clk_i(clk_i & testbench.cce_trace_en_lo)
                  ,.reset_i(reset_i)
                  ,.cce_id_i(cfg_bus_cast_i.cce_id)
-                 ,.fetch_pc_i(fetch_pc_lo)
-                 ,.instruction_v_i(fetch_inst_v_lo)
-                 ,.instruction_i(fetch_inst_lo)
+                 ,.pc_i(inst_decode.ex_pc_r)
+                 ,.instruction_v_i(inst_decode.inst_v_r)
+                 ,.instruction_i(inst_decode.inst_r)
                  );
           end
         end

@@ -24,7 +24,7 @@ module bp_me_nonsynth_cce_inst_tracer
   (input                        clk_i
    , input                      reset_i
    , input [cce_id_width_p-1:0] cce_id_i
-   , input [cce_pc_width_p-1:0] fetch_pc_i
+   , input [cce_pc_width_p-1:0] pc_i
    , input                      instruction_v_i
    , input bp_cce_inst_s        instruction_i
   );
@@ -42,7 +42,7 @@ module bp_me_nonsynth_cce_inst_tracer
 
   always_ff @(negedge clk_i) begin
     if (~reset_i & instruction_v_i) begin
-      $fwrite(file, "%0t,%H,%b,%b,%b,%b,", $time, fetch_pc_i, instruction_v_i
+      $fwrite(file, "%0t,%H,%b,%b,%b,%b,", $time, pc_i, instruction_v_i
               , instruction_i.op, instruction_i.minor_op_u, instruction_i.type_u);
       case(instruction_i.op)
         e_op_alu: begin
