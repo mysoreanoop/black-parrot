@@ -640,6 +640,7 @@ module testbench
                  ,.pc_i(inst_decode.ex_pc_r)
                  ,.instruction_v_i(inst_decode.inst_v_r)
                  ,.instruction_i(inst_decode.inst_r)
+                 ,.stall_i(stall_lo)
                  );
           end
         end

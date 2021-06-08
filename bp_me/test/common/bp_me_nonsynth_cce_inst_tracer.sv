@@ -27,6 +27,7 @@ module bp_me_nonsynth_cce_inst_tracer
    , input [cce_pc_width_p-1:0] pc_i
    , input                      instruction_v_i
    , input bp_cce_inst_s        instruction_i
+   , input                      stall_i
   );
 
   integer file;
@@ -39,9 +40,8 @@ module bp_me_nonsynth_cce_inst_tracer
     $fwrite(file, "Time,PC,Valid,Op,MinorOp,InstructionBits,Assembly\n");
   end
 
-
   always_ff @(negedge clk_i) begin
-    if (~reset_i & instruction_v_i) begin
+    if (~reset_i & instruction_v_i & ~stall_i) begin
       $fwrite(file, "%0t,%H,%b,%b,%b,%b,", $time, pc_i, instruction_v_i
               , instruction_i.op, instruction_i.minor_op_u, instruction_i.type_u);
       case(instruction_i.op)
