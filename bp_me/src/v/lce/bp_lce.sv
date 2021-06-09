@@ -92,6 +92,7 @@ module bp_lce
     , output logic [lce_req_msg_header_width_lp-1:0] lce_req_header_o
     , output logic                                   lce_req_header_v_o
     , input                                          lce_req_header_ready_and_i
+    , output logic                                   lce_req_has_data_o
     , output logic [dword_width_gp-1:0]              lce_req_data_o
     , output logic                                   lce_req_data_v_o
     , input                                          lce_req_data_ready_and_i
@@ -101,6 +102,7 @@ module bp_lce
     , output logic [lce_resp_msg_header_width_lp-1:0] lce_resp_header_o
     , output logic                                   lce_resp_header_v_o
     , input                                          lce_resp_header_ready_and_i
+    , output logic                                   lce_resp_has_data_o
     , output logic [dword_width_gp-1:0]              lce_resp_data_o
     , output logic                                   lce_resp_data_v_o
     , input                                          lce_resp_data_ready_and_i
@@ -110,6 +112,7 @@ module bp_lce
     , output logic [lce_cmd_msg_header_width_lp-1:0] lce_cmd_header_o
     , output logic                                   lce_cmd_header_v_o
     , input                                          lce_cmd_header_ready_and_i
+    , output logic                                   lce_cmd_has_data_o
     , output logic [dword_width_gp-1:0]              lce_cmd_data_o
     , output logic                                   lce_cmd_data_v_o
     , input                                          lce_cmd_data_ready_and_i
@@ -119,6 +122,7 @@ module bp_lce
     , input [lce_cmd_msg_header_width_lp-1:0]        lce_cmd_header_i
     , input                                          lce_cmd_header_v_i
     , output logic                                   lce_cmd_header_ready_and_o
+    , input                                          lce_cmd_has_data_i
     , input [dword_width_gp-1:0]                     lce_cmd_data_i
     , input                                          lce_cmd_data_v_i
     , output logic                                   lce_cmd_data_ready_and_o
@@ -182,6 +186,7 @@ module bp_lce
       ,.lce_req_header_o(lce_req_header_o)
       ,.lce_req_header_v_o(lce_req_header_v_o)
       ,.lce_req_header_ready_and_i(lce_req_header_ready_and_i)
+      ,.lce_req_has_data_o(lce_req_has_data_o)
       ,.lce_req_data_o(lce_req_data_o)
       ,.lce_req_data_v_o(lce_req_data_v_o)
       ,.lce_req_data_ready_and_i(lce_req_data_ready_and_i)
@@ -233,6 +238,7 @@ module bp_lce
       ,.lce_resp_header_o(lce_resp_header_o)
       ,.lce_resp_header_v_o(lce_resp_header_v_o)
       ,.lce_resp_header_ready_and_i(lce_resp_header_ready_and_i)
+      ,.lce_resp_has_data_o(lce_resp_has_data_o)
       ,.lce_resp_data_o(lce_resp_data_o)
       ,.lce_resp_data_v_o(lce_resp_data_v_o)
       ,.lce_resp_data_ready_and_i(lce_resp_data_ready_and_i)
@@ -241,6 +247,7 @@ module bp_lce
       ,.lce_cmd_header_o(lce_cmd_header_o)
       ,.lce_cmd_header_v_o(lce_cmd_header_v_o)
       ,.lce_cmd_header_ready_and_i(lce_cmd_header_ready_and_i)
+      ,.lce_cmd_has_data_o(lce_cmd_has_data_o)
       ,.lce_cmd_data_o(lce_cmd_data_o)
       ,.lce_cmd_data_v_o(lce_cmd_data_v_o)
       ,.lce_cmd_data_ready_and_i(lce_cmd_data_ready_and_i)
@@ -249,6 +256,7 @@ module bp_lce
       ,.lce_cmd_header_i(lce_cmd_header_i)
       ,.lce_cmd_header_v_i(lce_cmd_header_v_i)
       ,.lce_cmd_header_ready_and_o(lce_cmd_header_ready_and_o)
+      ,.lce_cmd_has_data_i(lce_cmd_has_data_i)
       ,.lce_cmd_data_i(lce_cmd_data_i)
       ,.lce_cmd_data_v_i(lce_cmd_data_v_i)
       ,.lce_cmd_data_ready_and_o(lce_cmd_data_ready_and_o)

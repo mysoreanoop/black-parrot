@@ -38,6 +38,7 @@ module bp_lce_cmd
     , localparam lg_assoc_lp = `BSG_SAFE_CLOG2(assoc_p)
     , localparam lg_sets_lp = `BSG_SAFE_CLOG2(sets_p)
     , localparam lg_block_size_in_bytes_lp = `BSG_SAFE_CLOG2(block_size_in_bytes_lp)
+    , localparam block_size_in_words_lp = (block_width_p/dword_width_gp)
 
    `declare_bp_bedrock_lce_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
    `declare_bp_cache_engine_if_widths(paddr_width_p, ctag_width_p, sets_p, assoc_p, req_width_p, block_width_p, fill_width_p, cache)
@@ -107,6 +108,7 @@ module bp_lce_cmd
     , output logic [lce_resp_msg_header_width_lp-1:0] lce_resp_header_o
     , output logic                                   lce_resp_header_v_o
     , input                                          lce_resp_header_ready_and_i
+    , output logic                                   lce_resp_has_data_o
     , output logic [dword_width_gp-1:0]              lce_resp_data_o
     , output logic                                   lce_resp_data_v_o
     , input                                          lce_resp_data_ready_and_i
@@ -116,6 +118,7 @@ module bp_lce_cmd
     , output logic [lce_cmd_msg_header_width_lp-1:0] lce_cmd_header_o
     , output logic                                   lce_cmd_header_v_o
     , input                                          lce_cmd_header_ready_and_i
+    , output logic                                   lce_cmd_has_data_o
     , output logic [dword_width_gp-1:0]              lce_cmd_data_o
     , output logic                                   lce_cmd_data_v_o
     , input                                          lce_cmd_data_ready_and_i
@@ -125,6 +128,7 @@ module bp_lce_cmd
     , input [lce_cmd_msg_header_width_lp-1:0]        lce_cmd_header_i
     , input                                          lce_cmd_header_v_i
     , output logic                                   lce_cmd_header_ready_and_o
+    , input                                          lce_cmd_has_data_i
     , input [dword_width_gp-1:0]                     lce_cmd_data_i
     , input                                          lce_cmd_data_v_i
     , output logic                                   lce_cmd_data_ready_and_o
@@ -179,12 +183,20 @@ module bp_lce_cmd
       ,.yumi_i(lce_cmd_yumi)
       );
 
-  // TODO: should this be a SIPO from dword_width_gp to fill_width_gp?
-  bsg_two_fifo
-    #(.width_p(dword_width_gp))
+  bsg_serial_in_parallel_out_passthrough_dynamic_last
+    #(.width_p(dword_width_gp)
+      ,.max_els_p(block_size_in_words_lp)
+      )
     lce_cmd_data_in_buffer
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
+      ,.v_i(lce_cmd_data_v_i)
+      ,.data_i(lce_cmd_data_i)
+      ,.ready_and_o(lce_cmd_data_ready_and_o)
+      ,.last_i(lce_cmd_last_i)
+      ,.v_o()
+      ,.data_o()
+      ,.ready_and_i()
       );
 
   // sync done register - goes high when all sync command/acks complete
