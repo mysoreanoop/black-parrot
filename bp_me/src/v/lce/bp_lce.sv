@@ -19,8 +19,9 @@ module bp_lce
     // parameters specific to this LCE
     , parameter assoc_p = "inv"
     , parameter sets_p = "inv"
-    , parameter block_width_p = "inv"
-    , parameter fill_width_p = block_width_p
+    , parameter block_width_p = "inv" // width of cache block
+    , parameter fill_width_p = block_width_p // unused except for declaring interfaces
+    , parameter req_width_p = dword_width_gp // cache request data width
     , parameter data_mem_invert_clk_p = 0
     , parameter tag_mem_invert_clk_p = 0
     , parameter stat_mem_invert_clk_p = 0
@@ -40,7 +41,7 @@ module bp_lce
     , localparam lg_block_size_in_bytes_lp = `BSG_SAFE_CLOG2(block_size_in_bytes_lp)
 
    `declare_bp_bedrock_lce_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
-   `declare_bp_cache_engine_if_widths(paddr_width_p, ctag_width_p, sets_p, assoc_p, dword_width_gp, block_width_p, fill_width_p, cache)
+   `declare_bp_cache_engine_if_widths(paddr_width_p, ctag_width_p, sets_p, assoc_p, req_width_p, block_width_p, fill_width_p, cache)
   )
   (
     input                                            clk_i
@@ -85,28 +86,43 @@ module bp_lce
     , input                                          stat_mem_pkt_yumi_i
     , input [cache_stat_info_width_lp-1:0]           stat_mem_i
 
-    // LCE-CCE interface
-    // Req: ready->valid
-    , output logic [lce_req_msg_width_lp-1:0]        lce_req_o
-    , output logic                                   lce_req_v_o
-    , input                                          lce_req_ready_then_i
+    // LCE-CCE Interface
+    // BP Burst protocol: ready&valid
+    // request out
+    , output logic [lce_req_msg_header_width_lp-1:0] lce_req_header_o
+    , output logic                                   lce_req_header_v_o
+    , input                                          lce_req_header_ready_and_i
+    , output logic [dword_width_gp-1:0]              lce_req_data_o
+    , output logic                                   lce_req_data_v_o
+    , input                                          lce_req_data_ready_and_i
+    , output logic                                   lce_req_last_o
 
-    // Resp: ready->valid
-    , output logic [lce_resp_msg_width_lp-1:0]       lce_resp_o
-    , output logic                                   lce_resp_v_o
-    , input                                          lce_resp_ready_then_i
+    // response out
+    , output logic [lce_resp_msg_header_width_lp-1:0] lce_resp_header_o
+    , output logic                                   lce_resp_header_v_o
+    , input                                          lce_resp_header_ready_and_i
+    , output logic [dword_width_gp-1:0]              lce_resp_data_o
+    , output logic                                   lce_resp_data_v_o
+    , input                                          lce_resp_data_ready_and_i
+    , output logic                                   lce_resp_last_o
 
-    // CCE-LCE interface
-    // Cmd_i: valid->yumi
-    , input [lce_cmd_msg_width_lp-1:0]               lce_cmd_i
-    , input                                          lce_cmd_v_i
-    , output logic                                   lce_cmd_yumi_o
+    // command out
+    , output logic [lce_cmd_msg_header_width_lp-1:0] lce_cmd_header_o
+    , output logic                                   lce_cmd_header_v_o
+    , input                                          lce_cmd_header_ready_and_i
+    , output logic [dword_width_gp-1:0]              lce_cmd_data_o
+    , output logic                                   lce_cmd_data_v_o
+    , input                                          lce_cmd_data_ready_and_i
+    , output logic                                   lce_cmd_last_o
 
-    // LCE-LCE interface
-    // Cmd_o: ready->valid
-    , output logic [lce_cmd_msg_width_lp-1:0]        lce_cmd_o
-    , output logic                                   lce_cmd_v_o
-    , input                                          lce_cmd_ready_then_i
+    // command in
+    , input [lce_cmd_msg_header_width_lp-1:0]        lce_cmd_header_i
+    , input                                          lce_cmd_header_v_i
+    , output logic                                   lce_cmd_header_ready_and_o
+    , input [dword_width_gp-1:0]                     lce_cmd_data_i
+    , input                                          lce_cmd_data_v_i
+    , output logic                                   lce_cmd_data_ready_and_o
+    , input                                          lce_cmd_last_i
   );
 
   //synopsys translate_off
@@ -121,6 +137,8 @@ module bp_lce
       $error("LCE block width must be equal to fill width. Partial fill is not supported");
     assert(`BSG_IS_POW2(assoc_p)) else
       $error("LCE assoc must be power of two");
+    assert(req_width_p == dword_width_gp) else
+      $error("Cache request width must be equal to dword width");
   end
   //synopsys translate_on
 
@@ -134,6 +152,7 @@ module bp_lce
       ,.sets_p(sets_p)
       ,.block_width_p(block_width_p)
       ,.fill_width_p(fill_width_p)
+      ,.req_width_p(req_width_p)
       ,.credits_p(credits_p)
       ,.non_excl_reads_p(non_excl_reads_p)
       ,.metadata_latency_p(metadata_latency_p)
@@ -160,9 +179,13 @@ module bp_lce
 
       ,.uc_store_req_complete_i(uc_store_req_complete_lo)
 
-      ,.lce_req_o(lce_req_o)
-      ,.lce_req_v_o(lce_req_v_o)
-      ,.lce_req_ready_then_i(lce_req_ready_then_i)
+      ,.lce_req_header_o(lce_req_header_o)
+      ,.lce_req_header_v_o(lce_req_header_v_o)
+      ,.lce_req_header_ready_and_i(lce_req_header_ready_and_i)
+      ,.lce_req_data_o(lce_req_data_o)
+      ,.lce_req_data_v_o(lce_req_data_v_o)
+      ,.lce_req_data_ready_and_i(lce_req_data_ready_and_i)
+      ,.lce_req_last_o(lce_req_last_o)
       );
 
   // LCE Command Module
@@ -173,6 +196,7 @@ module bp_lce
       ,.sets_p(sets_p)
       ,.block_width_p(block_width_p)
       ,.fill_width_p(fill_width_p)
+      ,.req_width_p(req_width_p)
       ,.data_mem_invert_clk_p(data_mem_invert_clk_p)
       ,.tag_mem_invert_clk_p(tag_mem_invert_clk_p)
       ,.stat_mem_invert_clk_p(stat_mem_invert_clk_p)
@@ -206,17 +230,29 @@ module bp_lce
       ,.stat_mem_pkt_yumi_i(stat_mem_pkt_yumi_i)
       ,.stat_mem_i(stat_mem_i)
 
-      ,.lce_cmd_i(lce_cmd_i)
-      ,.lce_cmd_v_i(lce_cmd_v_i)
-      ,.lce_cmd_yumi_o(lce_cmd_yumi_o)
+      ,.lce_resp_header_o(lce_resp_header_o)
+      ,.lce_resp_header_v_o(lce_resp_header_v_o)
+      ,.lce_resp_header_ready_and_i(lce_resp_header_ready_and_i)
+      ,.lce_resp_data_o(lce_resp_data_o)
+      ,.lce_resp_data_v_o(lce_resp_data_v_o)
+      ,.lce_resp_data_ready_and_i(lce_resp_data_ready_and_i)
+      ,.lce_resp_last_o(lce_resp_last_o)
 
-      ,.lce_resp_o(lce_resp_o)
-      ,.lce_resp_v_o(lce_resp_v_o)
-      ,.lce_resp_ready_then_i(lce_resp_ready_then_i)
+      ,.lce_cmd_header_o(lce_cmd_header_o)
+      ,.lce_cmd_header_v_o(lce_cmd_header_v_o)
+      ,.lce_cmd_header_ready_and_i(lce_cmd_header_ready_and_i)
+      ,.lce_cmd_data_o(lce_cmd_data_o)
+      ,.lce_cmd_data_v_o(lce_cmd_data_v_o)
+      ,.lce_cmd_data_ready_and_i(lce_cmd_data_ready_and_i)
+      ,.lce_cmd_last_o(lce_cmd_last_o)
 
-      ,.lce_cmd_o(lce_cmd_o)
-      ,.lce_cmd_v_o(lce_cmd_v_o)
-      ,.lce_cmd_ready_then_i(lce_cmd_ready_then_i)
+      ,.lce_cmd_header_i(lce_cmd_header_i)
+      ,.lce_cmd_header_v_i(lce_cmd_header_v_i)
+      ,.lce_cmd_header_ready_and_o(lce_cmd_header_ready_and_o)
+      ,.lce_cmd_data_i(lce_cmd_data_i)
+      ,.lce_cmd_data_v_i(lce_cmd_data_v_i)
+      ,.lce_cmd_data_ready_and_o(lce_cmd_data_ready_and_o)
+      ,.lce_cmd_last_i(lce_cmd_last_i)
       );
 
 
