@@ -25,8 +25,9 @@ module bp_lce_cmd
     // parameters specific to this LCE
     , parameter assoc_p = "inv"
     , parameter sets_p = "inv"
-    , parameter block_width_p = "inv"
-    , parameter fill_width_p = block_width_p
+    , parameter block_width_p = "inv" // width of cache block
+    , parameter fill_width_p = block_width_p // unused except for declaring interfaces
+    , parameter req_width_p = dword_width_gp // cache request data width
     , parameter data_mem_invert_clk_p = 0
     , parameter tag_mem_invert_clk_p = 0
     , parameter stat_mem_invert_clk_p = 0
@@ -39,7 +40,7 @@ module bp_lce_cmd
     , localparam lg_block_size_in_bytes_lp = `BSG_SAFE_CLOG2(block_size_in_bytes_lp)
 
    `declare_bp_bedrock_lce_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
-   `declare_bp_cache_engine_if_widths(paddr_width_p, ctag_width_p, sets_p, assoc_p, dword_width_gp, block_width_p, fill_width_p, cache)
+   `declare_bp_cache_engine_if_widths(paddr_width_p, ctag_width_p, sets_p, assoc_p, req_width_p, block_width_p, fill_width_p, cache)
 
     // width for counter used during initiliazation and for sync messages
     , localparam cnt_width_lp = `BSG_MAX(cce_id_width_p+1, `BSG_SAFE_CLOG2(sets_p)+1)
@@ -101,27 +102,37 @@ module bp_lce_cmd
     // block (miss) on uncached stores
     , output logic                                   uc_store_req_complete_o
 
-    // LCE-CCE interface
-    // Resp: ready->valid
-    , output logic [lce_resp_msg_width_lp-1:0]       lce_resp_o
-    , output logic                                   lce_resp_v_o
-    , input                                          lce_resp_ready_then_i
+    // LCE-CCE Interface
+    // response out
+    , output logic [lce_resp_msg_header_width_lp-1:0] lce_resp_header_o
+    , output logic                                   lce_resp_header_v_o
+    , input                                          lce_resp_header_ready_and_i
+    , output logic [dword_width_gp-1:0]              lce_resp_data_o
+    , output logic                                   lce_resp_data_v_o
+    , input                                          lce_resp_data_ready_and_i
+    , output logic                                   lce_resp_last_o
 
-    // CCE-LCE interface
-    // Cmd_i: valid->yumi
-    , input [lce_cmd_msg_width_lp-1:0]               lce_cmd_i
-    , input                                          lce_cmd_v_i
-    , output logic                                   lce_cmd_yumi_o
+    // command out
+    , output logic [lce_cmd_msg_header_width_lp-1:0] lce_cmd_header_o
+    , output logic                                   lce_cmd_header_v_o
+    , input                                          lce_cmd_header_ready_and_i
+    , output logic [dword_width_gp-1:0]              lce_cmd_data_o
+    , output logic                                   lce_cmd_data_v_o
+    , input                                          lce_cmd_data_ready_and_i
+    , output logic                                   lce_cmd_last_o
 
-    // LCE-LCE interface
-    // Cmd_o: ready->valid
-    , output logic [lce_cmd_msg_width_lp-1:0]        lce_cmd_o
-    , output logic                                   lce_cmd_v_o
-    , input                                          lce_cmd_ready_then_i
+    // command in
+    , input [lce_cmd_msg_header_width_lp-1:0]        lce_cmd_header_i
+    , input                                          lce_cmd_header_v_i
+    , output logic                                   lce_cmd_header_ready_and_o
+    , input [dword_width_gp-1:0]                     lce_cmd_data_i
+    , input                                          lce_cmd_data_v_i
+    , output logic                                   lce_cmd_data_ready_and_o
+    , input                                          lce_cmd_last_i
   );
 
   `declare_bp_bedrock_lce_if(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
-  `declare_bp_cache_engine_if(paddr_width_p, ctag_width_p, sets_p, assoc_p, dword_width_gp, block_width_p, fill_width_p, cache);
+  `declare_bp_cache_engine_if(paddr_width_p, ctag_width_p, sets_p, assoc_p, req_width_p, block_width_p, fill_width_p, cache);
 
   // FSM states
   typedef enum logic [3:0] {
@@ -137,15 +148,14 @@ module bp_lce_cmd
   } lce_cmd_state_e;
   lce_cmd_state_e state_r, state_n;
 
-  bp_bedrock_lce_cmd_msg_s lce_cmd, lce_cmd_out;
-  bp_bedrock_lce_resp_msg_s lce_resp;
+  bp_bedrock_lce_cmd_msg_header_s lce_cmd, lce_cmd_out;
+  bp_bedrock_lce_resp_msg_header_s lce_resp;
   bp_bedrock_lce_cmd_payload_s lce_cmd_payload, lce_cmd_out_payload;
   bp_bedrock_lce_resp_payload_s lce_resp_payload;
 
-  assign lce_cmd = lce_cmd_i;
-  assign lce_cmd_payload = lce_cmd.header.payload;
-  assign lce_resp_o = lce_resp;
-  assign lce_cmd_o = lce_cmd_out;
+  assign lce_cmd_payload = lce_cmd.payload;
+  assign lce_resp_header_o = lce_resp;
+  assign lce_cmd_header_o = lce_cmd_out;
 
   bp_cache_data_mem_pkt_s data_mem_pkt;
   bp_cache_tag_mem_pkt_s tag_mem_pkt;
@@ -154,6 +164,28 @@ module bp_lce_cmd
   assign data_mem_pkt_o = data_mem_pkt;
   assign tag_mem_pkt_o = tag_mem_pkt;
   assign stat_mem_pkt_o = stat_mem_pkt;
+
+  logic lce_cmd_v, lce_cmd_yumi;
+  bsg_two_fifo
+    #(.width_p($bits(bp_bedrock_lce_cmd_msg_header_s)))
+    lce_cmd_header_in_buffer
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.ready_o(lce_cmd_header_ready_and_o)
+      ,.data_i(lce_cmd_header_i)
+      ,.v_i(lce_cmd_header_v_i)
+      ,.v_o(lce_cmd_v)
+      ,.data_o(lce_cmd)
+      ,.yumi_i(lce_cmd_yumi)
+      );
+
+  // TODO: should this be a SIPO from dword_width_gp to fill_width_gp?
+  bsg_two_fifo
+    #(.width_p(dword_width_gp))
+    lce_cmd_data_in_buffer
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      );
 
   // sync done register - goes high when all sync command/acks complete
   logic sync_done_en, sync_done_li;
@@ -262,11 +294,15 @@ module bp_lce_cmd
 
     lce_resp = '0;
     lce_resp_payload = '0;
-    lce_resp_v_o = 1'b0;
+    lce_resp_header_v_o = 1'b0;
+    lce_resp_data_o = '0;
+    lce_resp_data_v_o = 1'b0;
 
     lce_cmd_out = '0;
     lce_cmd_out_payload = '0;
-    lce_cmd_v_o = 1'b0;
+    lce_cmd_header_v_o = 1'b0;
+    lce_cmd_data_o = '0;
+    lce_cmd_data_v_o = 1'b0;
 
     // LCE-Cache Interface signals
     data_mem_pkt = '0;
@@ -323,9 +359,9 @@ module bp_lce_cmd
             e_bedrock_cmd_sync: begin
               lce_resp_payload.dst_id = lce_cmd_payload.src_id;
               lce_resp_payload.src_id = lce_id_i;
-              lce_resp.header.payload = lce_resp_payload;
-              lce_resp.header.msg_type.resp = e_bedrock_resp_sync_ack;
-              lce_resp_v_o = lce_resp_ready_then_i;
+              lce_resp.payload = lce_resp_payload;
+              lce_resp.msg_type.resp = e_bedrock_resp_sync_ack;
+              lce_resp_header_v_o = lce_cmd_header_v_i;
               lce_cmd_yumi_o = lce_resp_v_o;
 
               // reset the counter when last sync is received and ack is sent
