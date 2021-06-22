@@ -214,6 +214,8 @@ bind bp_me_nonsynth_mock_lce
       ,.lce_cmd_o_i(lce_cmd_o)
       ,.lce_cmd_o_v_i(lce_cmd_v_o)
       ,.lce_cmd_o_ready_and_i(lce_cmd_ready_and_i)
+      ,.cache_req_complete_i(testbench.tr_v_li & testbench.tr_ready_lo)
+      ,.uc_store_req_complete_i('0)
       );
 
 bind bp_me_nonsynth_mock_lce
