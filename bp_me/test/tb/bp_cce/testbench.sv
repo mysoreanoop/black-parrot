@@ -316,6 +316,24 @@ bind bp_cce_dir
       ,.addr_dst_gpr_o_i(addr_dst_gpr_o)
       );
 
+// CCE instruction tracer
+// this is connected to the instruction registered in the EX stage
+if (cce_ucode_p) begin
+  bind bp_cce
+    bp_me_nonsynth_cce_inst_tracer
+      #(.bp_params_p(bp_params_p)
+        )
+      cce_inst_tracer
+      (.clk_i(clk_i & (testbench.cce_trace_p == 1))
+       ,.reset_i(reset_i)
+       ,.cce_id_i(cfg_bus_cast_i.cce_id)
+       ,.pc_i(inst_decode.ex_pc_r)
+       ,.instruction_v_i(inst_decode.inst_v_r)
+       ,.instruction_i(inst_decode.inst_r)
+       ,.stall_i(stall_lo)
+       );
+end
+
 logic cce_ucode_v_li;
 logic cce_ucode_w_li;
 logic [cce_pc_width_p-1:0] cce_ucode_addr_li;
