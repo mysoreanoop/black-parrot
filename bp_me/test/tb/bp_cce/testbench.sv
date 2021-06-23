@@ -334,6 +334,29 @@ if (cce_ucode_p) begin
        ,.instruction_i(inst_decode.inst_r)
        ,.stall_i(stall_lo)
        );
+end else begin
+  bind bp_cce_fsm
+    bp_me_nonsynth_cce_perf
+      #(.bp_params_p(bp_params_p))
+      cce_perf
+      (.clk_i(clk_i & (testbench.cce_trace_p == 1))
+       ,.reset_i(reset_i)
+       ,.cce_id_i(cfg_bus_cast_i.cce_id)
+       ,.req_start_i(lce_req_v & (state_r == e_ready))
+       ,.req_end_i(state_r == e_ready)
+       ,.lce_req_header_i(lce_req)
+       ,.sim_finish_i(testbench.tr_done_lo)
+       ,.cmd_send_i(lce_cmd_header_v_o & lce_cmd_header_ready_and_i)
+       ,.lce_cmd_header_i(lce_cmd)
+       ,.resp_receive_i(lce_resp_yumi)
+       ,.lce_resp_header_i(lce_resp)
+       ,.mem_resp_receive_i(mem_resp_yumi)
+       ,.mem_resp_squash_i(mem_resp_yumi & spec_bits_lo.squash)
+       ,.mem_resp_header_i(mem_resp)
+       ,.mem_cmd_send_i(mem_cmd_header_v_o & mem_cmd_header_ready_and_i)
+       ,.mem_cmd_header_i(mem_cmd)
+       );
+
 end
 
 logic cce_ucode_v_li;
@@ -761,8 +784,20 @@ bsg_counter_clear_up
    ,.count_o(clock_cnt)
    );
 
+logic tr_done_r;
+bsg_dff_reset
+  #(.width_p(1)
+    ,.reset_p(0)
+    )
+  done_reg
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.data_i(tr_done_lo)
+     ,.data_o(tr_done_r)
+     );
+
 always_ff @(negedge clk_i) begin
-  if (tr_done_lo) begin
+  if (tr_done_r) begin
     $display("Bytes: %d Clocks: %d mBPC: %d "
              , instr_count*64
              , clock_cnt

@@ -18,16 +18,17 @@ module bp_me_nonsynth_cce_perf
 
     `declare_bp_bedrock_lce_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
 
+    , localparam cnt_max_lp = 64'h0FFF_FFFF_FFFF_FFFF
     , localparam cce_trace_file_p = "cce_perf"
-    , localparam integer cnt_max_lp = 1<<31
     , localparam cnt_ptr_width_lp = `BSG_SAFE_CLOG2(cnt_max_lp+1)
   )
   (input                                            clk_i
    , input                                          reset_i
    , input [cce_id_width_p-1:0]                     cce_id_i
-   , input                                          start_i
+   , input                                          req_start_i
    , input [lce_req_msg_header_width_lp-1:0]        lce_req_header_i
-   , input                                          end_i
+   , input                                          req_end_i
+   , input                                          sim_finish_i
   );
 
   `declare_bp_bedrock_lce_if(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
@@ -39,13 +40,13 @@ module bp_me_nonsynth_cce_perf
   always_ff @(negedge reset_i) begin
     file_name = $sformatf("%s_%x.trace", cce_trace_file_p, cce_id_i);
     file      = $fopen(file_name, "w");
-    $fdisplay(file, "simtime,cce,op,latency")
+    $fdisplay(file, "simtime,current_cycle,cce,op,latency");
   end
 
-  logic started_r;
+  logic req_started_r;
 
   logic cnt_up;
-  wire cnt_clr = ~started_r & start_i;
+  wire cnt_clr = ~req_started_r & req_start_i;
   logic [cnt_ptr_width_lp-1:0] cnt;
   bsg_counter_clear_up
     #(.max_val_p(cnt_max_lp)
@@ -57,6 +58,33 @@ module bp_me_nonsynth_cce_perf
      ,.clear_i(cnt_clr)
      ,.up_i(cnt_up)
      ,.count_o(cnt)
+     );
+
+  logic [cnt_ptr_width_lp-1:0] total_cycles, idle_cycles;
+
+  bsg_counter_clear_up
+    #(.max_val_p(cnt_max_lp)
+      ,.init_val_p('0)
+      )
+  cycles_counter
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.clear_i(reset_i)
+     ,.up_i(1'b1)
+     ,.count_o(total_cycles)
+     );
+
+  // idle when not actively processing a request
+  bsg_counter_clear_up
+    #(.max_val_p(cnt_max_lp)
+      ,.init_val_p('0)
+      )
+  idle_counter
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.clear_i(reset_i)
+     ,.up_i(~cnt_up)
+     ,.count_o(idle_cycles)
      );
 
   bsg_dff_reset_en
@@ -71,16 +99,16 @@ module bp_me_nonsynth_cce_perf
 
   always_ff @(posedge clk_i) begin
     if (reset_i) begin
-      started_r <= 1'b0;
+      req_started_r <= 1'b0;
       cnt_up <= 1'b0;
     end else begin
-      if (~started_r & start_i) begin
-        started_r <= 1'b1;
+      if (~req_started_r & req_start_i) begin
+        req_started_r <= 1'b1;
         cnt_up <= 1'b1;
       end
-      if (started_r & end_i) begin
+      if (req_started_r & req_end_i) begin
         cnt_up <= 1'b0;
-        started_r <= 1'b0;
+        req_started_r <= 1'b0;
       end
     end
   end
@@ -99,8 +127,13 @@ module bp_me_nonsynth_cce_perf
   // Tracer
   always_ff @(negedge clk_i) begin
     if (~reset_i) begin
-      if (started_r & end_i) begin
-        $fdisplay(file, "%0t:%0d,%s,%0d", $time, cce_id_i, op, cnt);
+      if (req_started_r & req_end_i) begin
+        $fdisplay(file, "%t,%0d,%0d,%s,%0d", $time, total_cycles, cce_id_i, op, cnt);
+      end
+      if (sim_finish_i) begin
+        $fdisplay(file, "total:%0d", total_cycles);
+        $fdisplay(file, "busy:%0d", total_cycles - idle_cycles);
+        $fdisplay(file, "idle:%0d", idle_cycles);
       end
     end // reset
   end // always_ff
