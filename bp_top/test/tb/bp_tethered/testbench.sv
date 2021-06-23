@@ -644,6 +644,31 @@ module testbench
                  ,.instruction_i(inst_decode.inst_r)
                  ,.stall_i(stall_lo)
                  );
+
+            bind bp_cce
+              bp_me_nonsynth_cce_perf
+                #(.bp_params_p(bp_params_p))
+                cce_perf
+                (.clk_i(clk_i & testbench.cce_trace_en_lo)
+                 ,.reset_i(reset_i)
+                 ,.cce_id_i(cfg_bus_cast_i.cce_id)
+                 ,.start_i('0)
+                 ,.end_i('0)
+                 ,.lce_req_header_i('0)
+                 );
+
+          end else begin
+            bind bp_cce_fsm
+              bp_me_nonsynth_cce_perf
+                #(.bp_params_p(bp_params_p))
+                cce_perf
+                (.clk_i(clk_i & testbench.cce_trace_en_lo)
+                 ,.reset_i(reset_i)
+                 ,.cce_id_i(cfg_bus_cast_i.cce_id)
+                 ,.start_i(lce_req_v & (state_r == e_ready))
+                 ,.end_i(state_r == e_ready)
+                 ,.lce_req_header_i(lce_req)
+                 );
           end
         end
     end
