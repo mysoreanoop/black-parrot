@@ -98,12 +98,8 @@ module bp_tile
   // Mem connections
 
   // to/from CCE
-  logic cce_mem_resp_header_v, cce_mem_resp_header_ready_and;
-  logic cce_mem_resp_data_v, cce_mem_resp_data_ready_and;
-  logic cce_mem_resp_has_data, cce_mem_resp_last;
-  logic cce_mem_cmd_header_v, cce_mem_cmd_header_ready_and;
-  logic cce_mem_cmd_data_v, cce_mem_cmd_data_ready_and;
-  logic cce_mem_cmd_has_data, cce_mem_cmd_last;
+  logic cce_mem_resp_v, cce_mem_resp_ready_and, cce_mem_resp_last;
+  logic cce_mem_cmd_v, cce_mem_cmd_ready_and, cce_mem_cmd_last;
   bp_bedrock_cce_mem_msg_header_s cce_mem_resp_header, cce_mem_cmd_header;
   logic [dword_width_gp-1:0] cce_mem_cmd_data, cce_mem_resp_data;
 
@@ -295,21 +291,15 @@ module bp_tile
      // CCE-MEM Interface
      // BedRock Burst protocol: ready&valid
      ,.mem_resp_header_i(cce_mem_resp_header)
-     ,.mem_resp_header_v_i(cce_mem_resp_header_v)
-     ,.mem_resp_header_ready_and_o(cce_mem_resp_header_ready_and)
-     ,.mem_resp_has_data_i(cce_mem_resp_has_data)
      ,.mem_resp_data_i(cce_mem_resp_data)
-     ,.mem_resp_data_v_i(cce_mem_resp_data_v)
-     ,.mem_resp_data_ready_and_o(cce_mem_resp_data_ready_and)
+     ,.mem_resp_v_i(cce_mem_resp_v)
+     ,.mem_resp_ready_and_o(cce_mem_resp_ready_and)
      ,.mem_resp_last_i(cce_mem_resp_last)
 
      ,.mem_cmd_header_o(cce_mem_cmd_header)
-     ,.mem_cmd_header_v_o(cce_mem_cmd_header_v)
-     ,.mem_cmd_header_ready_and_i(cce_mem_cmd_header_ready_and)
-     ,.mem_cmd_has_data_o(cce_mem_cmd_has_data)
      ,.mem_cmd_data_o(cce_mem_cmd_data)
-     ,.mem_cmd_data_v_o(cce_mem_cmd_data_v)
-     ,.mem_cmd_data_ready_and_i(cce_mem_cmd_data_ready_and)
+     ,.mem_cmd_v_o(cce_mem_cmd_v)
+     ,.mem_cmd_ready_and_i(cce_mem_cmd_ready_and)
      ,.mem_cmd_last_o(cce_mem_cmd_last)
      );
 
@@ -554,26 +544,21 @@ module bp_tile
     );
 
   // Mem Command
-  logic cce_mem_cmd_v_and_lo;
-  bp_me_burst_to_lite
+  bp_me_stream_to_lite
    #(.bp_params_p(bp_params_p)
      ,.in_data_width_p(dword_width_gp)
      ,.out_data_width_p(cce_block_width_p)
      ,.payload_width_p(cce_mem_payload_width_lp)
      ,.payload_mask_p(mem_cmd_payload_mask_gp)
      )
-   mem_cmd_burst2lite
+   mem_cmd_stream2lite
     (.clk_i(clk_i)
      ,.reset_i(reset_r)
 
      ,.in_msg_header_i(cce_mem_cmd_header)
-     ,.in_msg_header_v_i(cce_mem_cmd_header_v)
-     ,.in_msg_header_ready_and_o(cce_mem_cmd_header_ready_and)
-     ,.in_msg_has_data_i(cce_mem_cmd_has_data)
-
      ,.in_msg_data_i(cce_mem_cmd_data)
-     ,.in_msg_data_v_i(cce_mem_cmd_data_v)
-     ,.in_msg_data_ready_and_o(cce_mem_cmd_data_ready_and)
+     ,.in_msg_v_i(cce_mem_cmd_v)
+     ,.in_msg_ready_and_o(cce_mem_cmd_ready_and)
      ,.in_msg_last_i(cce_mem_cmd_last)
 
      ,.out_msg_o(cce_mem_cmd_lo)
@@ -584,14 +569,14 @@ module bp_tile
   // Mem Response
   logic cce_mem_resp_ready_lo;
   assign cce_mem_resp_yumi_lo = cce_mem_resp_v_li & cce_mem_resp_ready_lo;
-  bp_me_lite_to_burst
+  bp_me_lite_to_stream
    #(.bp_params_p(bp_params_p)
      ,.in_data_width_p(cce_block_width_p)
      ,.out_data_width_p(dword_width_gp)
      ,.payload_width_p(cce_mem_payload_width_lp)
      ,.payload_mask_p(mem_resp_payload_mask_gp)
      )
-   mem_resp_lite2burst
+   mem_resp_lite2stream
     (.clk_i(clk_i)
      ,.reset_i(reset_r)
 
@@ -600,13 +585,9 @@ module bp_tile
      ,.in_msg_ready_and_o(cce_mem_resp_ready_lo)
 
      ,.out_msg_header_o(cce_mem_resp_header)
-     ,.out_msg_header_v_o(cce_mem_resp_header_v)
-     ,.out_msg_header_ready_and_i(cce_mem_resp_header_ready_and)
-     ,.out_msg_has_data_o(cce_mem_resp_has_data)
-
      ,.out_msg_data_o(cce_mem_resp_data)
-     ,.out_msg_data_v_o(cce_mem_resp_data_v)
-     ,.out_msg_data_ready_and_i(cce_mem_resp_data_ready_and)
+     ,.out_msg_v_o(cce_mem_resp_v)
+     ,.out_msg_ready_and_i(cce_mem_resp_ready_and)
      ,.out_msg_last_o(cce_mem_resp_last)
      );
 

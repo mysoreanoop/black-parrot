@@ -554,6 +554,7 @@ module testbench
 
       if (multicore_p)
         begin
+          /* TODO: update for stream on mem ports
           bind bp_cce_wrapper
             bp_me_nonsynth_cce_tracer
              #(.bp_params_p(bp_params_p))
@@ -603,6 +604,7 @@ module testbench
               ,.mem_cmd_data_v_i(mem_cmd_data_v_o)
               ,.mem_cmd_data_ready_and_i(mem_cmd_data_ready_and_i)
               );
+              */
 
           bind bp_lce
             bp_me_nonsynth_lce_tracer
