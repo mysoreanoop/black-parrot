@@ -1260,7 +1260,7 @@ module bp_cce_fsm
 
           // form message
           mem_cmd_base_header_lo.addr = mshr_r.paddr;
-          mem_cmd_base_header_lo.size = mshr_r.size;
+          mem_cmd_base_header_lo.size = mshr_r.msg_size;
           mem_cmd_base_header_lo.msg_type.mem = e_bedrock_mem_uc_wr;
           mem_cmd_payload_lo.lce_id = mshr_r.lce_id;
           mem_cmd_payload_lo.uncached = 1'b1;
@@ -1284,7 +1284,7 @@ module bp_cce_fsm
           lce_req_yumi = mem_cmd_v_lo & mem_cmd_ready_and_li & mem_cmd_stream_done_li;
 
           mem_cmd_base_header_lo.addr = mshr_r.paddr;
-          mem_cmd_base_header_lo.size = mshr_r.size;
+          mem_cmd_base_header_lo.size = mshr_r.msg_size;
           mem_cmd_base_header_lo.msg_type.mem = e_bedrock_mem_uc_rd;
           mem_cmd_payload_lo.lce_id = mshr_r.lce_id;
           mem_cmd_payload_lo.uncached = 1'b1;
@@ -1306,7 +1306,7 @@ module bp_cce_fsm
 
          // form message
          mem_cmd_base_header_lo.addr = mshr_r.paddr;
-         mem_cmd_base_header_lo.size = mshr_r.size;
+         mem_cmd_base_header_lo.size = mshr_r.msg_size;
          mem_cmd_base_header_lo.msg_type.mem = e_bedrock_mem_uc_wr;
          mem_cmd_payload_lo.lce_id = mshr_r.lce_id;
          mem_cmd_payload_lo.uncached = 1'b1;
