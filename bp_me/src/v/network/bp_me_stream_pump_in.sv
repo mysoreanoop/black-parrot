@@ -66,10 +66,12 @@ module bp_me_stream_pump_in
    , output logic                                   fsm_v_o
    , input                                          fsm_yumi_i
    // FSM control signals
-   // fsm_new is raised on first beat of every message
+   // fsm_new is raised when first beat of every message is acked
    , output logic                                   fsm_new_o
-   // fsm_done is raised on last beat of every message
+   // fsm_done is raised when last beat of every message is acked
    , output logic                                   fsm_done_o
+   // fsm_last is raised on last beat of every message
+   , output logic                                   fsm_last_o
    );
 
 
@@ -224,6 +226,7 @@ module bp_me_stream_pump_in
 
       fsm_new_o  = fsm_yumi_i & ~streaming_r;
       fsm_done_o = fsm_yumi_i & is_last_cnt;
+      fsm_last_o = fsm_v_o & is_last_cnt;
     end
 
   //synopsys translate_off

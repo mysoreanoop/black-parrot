@@ -65,11 +65,11 @@ module bp_me_stream_pump_out
    , output logic                                   fsm_ready_and_o
 
    // FSM control signals
-   // stream_cnt is the current stream word being sent
+   // fsm_cnt is the current stream word being sent
    , output logic [data_len_width_lp-1:0]           fsm_cnt_o
-   // stream_new is raised on first beat of every message
+   // fsm_new is raised when first beat of every message is acked
    , output logic                                   fsm_new_o
-   // stream_done is raised when last beat sends
+   // fsm_done is raised when last beat of every message sends
    , output logic                                   fsm_done_o
    );
 
