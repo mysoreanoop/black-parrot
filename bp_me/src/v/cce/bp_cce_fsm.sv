@@ -254,7 +254,7 @@ module bp_cce_fsm
   // MSHR
   `declare_bp_cce_mshr_s(lce_id_width_p, lce_assoc_p, paddr_width_p);
   bp_cce_mshr_s mshr_r, mshr_n;
-  logic [paddr_width_p-1:0] mshr_r_paddr_aligned = (mshr_r.paddr >> lg_block_size_in_bytes_lp) << lg_block_size_in_bytes_lp;
+  wire [paddr_width_p-1:0] mshr_r_paddr_aligned = (mshr_r.paddr >> lg_block_size_in_bytes_lp) << lg_block_size_in_bytes_lp;
 
   // Pending Bits
   logic pending_li, pending_clear_li, pending_lo;
