@@ -665,9 +665,18 @@ module testbench
                 (.clk_i(clk_i & testbench.cce_trace_en_lo)
                  ,.reset_i(reset_i)
                  ,.cce_id_i(cfg_bus_cast_i.cce_id)
-                 ,.start_i(lce_req_v & (state_r == e_ready))
-                 ,.end_i(state_r == e_ready)
+                 ,.req_start_i(lce_req_v & (state_r == e_ready))
+                 ,.req_end_i(state_r == e_ready)
                  ,.lce_req_header_i(lce_req)
+                 ,.cmd_send_i(lce_cmd_header_v_o & lce_cmd_header_ready_and_i)
+                 ,.lce_cmd_header_i(lce_cmd)
+                 ,.resp_receive_i(lce_resp_yumi)
+                 ,.lce_resp_header_i(lce_resp)
+                 ,.mem_resp_receive_i(mem_resp_yumi)
+                 ,.mem_resp_receive_i(mem_resp_yumi & spec_bits_lo.squash)
+                 ,.mem_resp_header_i(mem_resp)
+                 ,.mem_cmd_send_i(mem_cmd_header_v_o & mem_cmd_header_ready_and_i)
+                 ,.mem_cmd_header_i(mem_cmd)
                  );
           end
         end

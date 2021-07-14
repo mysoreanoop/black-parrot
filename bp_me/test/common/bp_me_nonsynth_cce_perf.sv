@@ -17,6 +17,7 @@ module bp_me_nonsynth_cce_perf
     `declare_bp_proc_params(bp_params_p)
 
     `declare_bp_bedrock_lce_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
+    `declare_bp_bedrock_mem_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p, cce)
 
     , localparam cnt_max_lp = 64'h0FFF_FFFF_FFFF_FFFF
     , localparam cce_trace_file_p = "cce_perf"
@@ -28,10 +29,19 @@ module bp_me_nonsynth_cce_perf
    , input                                          req_start_i
    , input [lce_req_msg_header_width_lp-1:0]        lce_req_header_i
    , input                                          req_end_i
-   , input                                          sim_finish_i
+   , input                                          cmd_send_i
+   , input [lce_cmd_msg_header_width_lp-1:0]        lce_cmd_header_i
+   , input                                          resp_receive_i
+   , input [lce_resp_msg_header_width_lp-1:0]       lce_resp_header_i
+   , input                                          mem_resp_receive_i
+   , input                                          mem_resp_squash_i
+   , input [cce_mem_msg_header_width_lp-1:0]        mem_resp_header_i
+   , input                                          mem_cmd_send_i
+   , input [cce_mem_msg_header_width_lp-1:0]        mem_cmd_header_i
   );
 
   `declare_bp_bedrock_lce_if(paddr_width_p, cce_block_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
+  `declare_bp_bedrock_mem_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p, cce);
   bp_bedrock_lce_req_msg_header_s  lce_req;
 
   integer file;
@@ -128,14 +138,15 @@ module bp_me_nonsynth_cce_perf
   always_ff @(negedge clk_i) begin
     if (~reset_i) begin
       if (req_started_r & req_end_i) begin
-        $fdisplay(file, "%t,%0d,%0d,%s,%0d", $time, total_cycles, cce_id_i, op, cnt);
-      end
-      if (sim_finish_i) begin
-        $fdisplay(file, "total:%0d", total_cycles);
-        $fdisplay(file, "busy:%0d", total_cycles - idle_cycles);
-        $fdisplay(file, "idle:%0d", idle_cycles);
+        $fdisplay(file, "%0t,%0d,%0d,%s,%0d", $time, total_cycles, cce_id_i, op, cnt);
       end
     end // reset
   end // always_ff
+
+  final begin
+    $fdisplay(file, "total:%0d", total_cycles);
+    $fdisplay(file, "busy:%0d", total_cycles - idle_cycles);
+    $fdisplay(file, "idle:%0d", idle_cycles);
+  end
 
 endmodule

@@ -345,7 +345,6 @@ end else begin
        ,.req_start_i(lce_req_v & (state_r == e_ready))
        ,.req_end_i(state_r == e_ready)
        ,.lce_req_header_i(lce_req)
-       ,.sim_finish_i(testbench.tr_done_lo)
        ,.cmd_send_i(lce_cmd_header_v_o & lce_cmd_header_ready_and_i)
        ,.lce_cmd_header_i(lce_cmd)
        ,.resp_receive_i(lce_resp_yumi)
@@ -787,7 +786,7 @@ bsg_counter_clear_up
 logic tr_done_r;
 bsg_dff_reset
   #(.width_p(1)
-    ,.reset_p(0)
+    ,.reset_val_p(0)
     )
   done_reg
     (.clk_i(clk_i)
