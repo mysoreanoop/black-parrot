@@ -452,7 +452,6 @@ module bp_cce_fsm
     , e_uc_coherent_cmd
     , e_uc_coherent_resp
     , e_uc_coherent_mem_cmd
-    , e_uc_coherent_mem_cmd_data
 
     , e_upgrade_stw_cmd
 
@@ -478,23 +477,6 @@ module bp_cce_fsm
   } mem_resp_state_e;
 
   mem_resp_state_e mem_resp_state_r, mem_resp_state_n;
-
-  // Memory Command Data Forwarding Counter
-  logic [counter_width_lp-1:0] mcdc_val, mcdc_cnt;
-  logic mcdc_set, mcdc_down;
-  bsg_counter_set_down
-    #(.width_p(counter_width_lp)
-      ,.init_val_p('0)
-      ,.set_and_down_exclusive_p(1)
-      )
-    memory_command_data_counter
-     (.clk_i(clk_i)
-      ,.reset_i(reset_i)
-      ,.set_i(mcdc_set)
-      ,.val_i(mcdc_val)
-      ,.down_i(mcdc_down)
-      ,.count_r_o(mcdc_cnt)
-      );
 
   // Counter for message send/receive
   logic cnt_rst;
@@ -726,11 +708,6 @@ module bp_cce_fsm
     // By default, pending write port is available
     pending_busy = '0;
     lce_cmd_busy = '0;
-
-    // memory command data packet counter
-    mcdc_set = '0;
-    mcdc_down = '0;
-    mcdc_val = '0;
 
     // Mem Response auto-processing and forwarding to LCE Command logic
     // The pending bit is written when the LCE Command header sends.
@@ -1614,7 +1591,7 @@ module bp_cce_fsm
                       : e_replacement_wb_resp;
 
             // set the pending bit on last beat
-            pending_w_v = lce_resp_yumi;
+            pending_w_v = mem_cmd_stream_done_li;
             pending_li = 1'b1;
             pending_w_addr = lce_resp.addr;
 
@@ -1624,7 +1601,7 @@ module bp_cce_fsm
             mshr_n.flags[e_opd_nwbf] = 1'b0;
 
             // setup required state for sending invalidations
-            if (lce_resp_yumi & invalidate_flag) begin
+            if (mem_cmd_stream_done_li & invalidate_flag) begin
               // don't invalidate the requesting LCE
               pe_sharers_n = sharers_hits_r & ~req_lce_id_one_hot;
               // if doing a transfer, also remove owner LCE since transfer
@@ -1787,11 +1764,11 @@ module bp_cce_fsm
               mem_cmd_data_lo = lce_resp_data_i;
 
               // set the pending bit
-              pending_w_v = lce_resp_yumi;
+              pending_w_v = mem_cmd_stream_done_li;
               pending_li = 1'b1;
               pending_w_addr = lce_resp.addr;
 
-              state_n = (lce_resp_yumi)
+              state_n = (mem_cmd_stream_done_li)
                         ? e_uc_coherent_mem_cmd
                         : e_uc_coherent_resp;
 
@@ -1839,7 +1816,7 @@ module bp_cce_fsm
           mem_cmd_data_lo = lce_req_data_i;
 
           // set the pending bit
-          pending_w_v = lce_resp_yumi;
+          pending_w_v = mem_cmd_stream_done_li;
           pending_li = 1'b1;
           pending_w_addr = mshr_r.paddr;
 
@@ -1925,10 +1902,10 @@ module bp_cce_fsm
             mem_cmd_base_header_lo.size = lce_resp.size;
             mem_cmd_data_lo = lce_resp_data_i;
 
-            state_n = (lce_resp_yumi) ? e_resolve_speculation : e_transfer_wb_resp;
+            state_n = (mem_cmd_stream_done_li) ? e_resolve_speculation : e_transfer_wb_resp;
 
             // set the pending bit
-            pending_w_v = lce_resp_yumi;
+            pending_w_v = mem_cmd_stream_done_li;
             pending_li = 1'b1;
             pending_w_addr = lce_resp.addr;
 
