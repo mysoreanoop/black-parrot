@@ -30,7 +30,8 @@ module testbench
    // size of CCE-Memory buffers for cmd/resp messages
    // for this testbench (one LCE, one CCE, one memory) only need enough space to hold as many
    // cmds/responses can be generated for a single LCE request
-   , parameter mem_buffer_els_lp         = 4
+   // 32 = 4 * 8-beat messages
+   , parameter mem_buffer_els_lp         = 32
 
    // LCE Trace Replay Width
    , localparam lce_opcode_width_lp=$bits(bp_me_nonsynth_lce_opcode_e)
