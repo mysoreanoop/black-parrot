@@ -188,9 +188,10 @@ module bp_me_stream_pump_out
       else if (is_fsm_stream & ~is_msg_stream)
         begin
           // N:1
-          // consume all but last FSM beat silently, then msg consumes last beat
+          // only send msg on last FSM beat
           msg_v_o = is_last_cnt & fsm_v_i;
-          fsm_ready_and_o = ~is_last_cnt;
+          // ack all but last FSM beat silently, then ack last FSM beat when msg beat sends
+          fsm_ready_and_o = ~is_last_cnt | (is_last_cnt & msg_ready_and_i);
           cnt_up = fsm_v_i & ~is_last_cnt;
           // hold address constant at critical address
           msg_header_cast_o.addr[0+:block_offset_width_lp] = critical_addr_r;

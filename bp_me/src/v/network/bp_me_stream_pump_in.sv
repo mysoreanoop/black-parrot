@@ -213,7 +213,7 @@ module bp_me_stream_pump_in
           // N:1
           // consume all but last msg input beat silently, then FSM consumes last beat
           fsm_v_o = msg_v_lo & is_last_cnt;
-          msg_yumi_li = ~is_last_cnt ? msg_v_lo : (msg_last_lo & fsm_yumi_i);
+          msg_yumi_li = (~is_last_cnt & msg_v_lo) | (is_last_cnt & msg_v_lo & msg_last_lo & fsm_yumi_i);
           cnt_up = msg_v_lo & ~is_last_cnt;
         end
       else
