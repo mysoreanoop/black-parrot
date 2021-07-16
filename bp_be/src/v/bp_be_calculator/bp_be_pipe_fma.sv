@@ -37,7 +37,7 @@ module bp_be_pipe_fma
  import bp_be_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
-   , parameter integer fpga_retiming_p[0:2] = {1,2,1}
+   , parameter integer latency_dstr_p[0:2] = {0,0,0} //Default = all retiming DFFs at the terminal DFF chain
    , parameter imul_latency_p = "inv"
    , parameter fma_latency_p  = "inv"
 
@@ -133,7 +133,7 @@ module bp_be_pipe_fma
   mulAddRecFNToRaw
    #(.expWidth(dp_exp_width_gp)
      ,.sigWidth(dp_sig_width_gp)
-     ,.latencyDstr({fpga_retiming_p[0], fpga_retiming_p[1]})
+     ,.latencyDstr({latency_dstr_p[0], latency_dstr_p[1]})
      ,.imulEn(1)
      )
    fma
@@ -158,7 +158,7 @@ module bp_be_pipe_fma
 	logic reservation_v_imul_n, reservation_v_fma_n, decode_pipe_fma_v_n, decode_pipe_mul_v_n, decode_opw_v_n, decode_ops_v_n;
 	bsg_dff_chain
 	 #(.width_p($bits({reservation.v, decode.pipe_mul_v, decode.opw_v}))
-	   ,.num_stages_p(imul_latency_p-fpga_retiming_p[0]-fpga_retiming_p[1]))
+	   ,.num_stages_p(imul_latency_p-latency_dstr_p[0]-latency_dstr_p[1]))
 		shunt_imul
 		(.clk_i(clk_i)
 		 ,.data_i({reservation.v, decode.pipe_mul_v, decode.opw_v})
@@ -167,7 +167,7 @@ module bp_be_pipe_fma
 
 	bsg_dff_chain
 	 #(.width_p($bits({control_li, frm_li, reservation.v, decode.pipe_fma_v, decode.ops_v}))
-	   ,.num_stages_p(fma_latency_p-fpga_retiming_p[0]-fpga_retiming_p[1]-fpga_retiming_p[2]))
+	   ,.num_stages_p(fma_latency_p-latency_dstr_p[0]-latency_dstr_p[1]-latency_dstr_p[2]))
 		shunt_fma
 		(.clk_i(clk_i)
 		 ,.data_i({control_li, frm_li, reservation.v, decode.pipe_fma_v, decode.ops_v})
@@ -176,7 +176,7 @@ module bp_be_pipe_fma
 
 	bsg_dff_chain
 	 #(.width_p($bits({invalid_exc, is_nan, is_inf, is_zero, fma_out_sign, fma_out_sexp, fma_out_sig}))
-	 	 ,.num_stages_p(fpga_retiming_p[2]))
+	 	 ,.num_stages_p(latency_dstr_p[2]))
 	 pre_round
 	  (.clk_i(clk_i)
 		 ,.data_i({invalid_exc, is_nan, is_inf, is_zero, fma_out_sign, fma_out_sexp, fma_out_sig})
@@ -250,7 +250,7 @@ module bp_be_pipe_fma
 
   bsg_dff_chain
    #(.width_p(1+dpath_width_gp) 
-     ,.num_stages_p(imul_latency_p-fpga_retiming_p[0]-fpga_retiming_p[1]))
+     ,.num_stages_p(imul_latency_p-latency_dstr_p[0]-latency_dstr_p[1]))
    imul_retiming_chain
     (.clk_i(clk_i)
 
@@ -261,7 +261,7 @@ module bp_be_pipe_fma
   wire fma_v_li = reservation_v_fma_n & decode_pipe_fma_v_n;
   bsg_dff_chain
    #(.width_p(1+$bits(bp_be_fp_reg_s)+$bits(rv64_fflags_s))
-     ,.num_stages_p(fma_latency_p-fpga_retiming_p[0]-fpga_retiming_p[1]-fpga_retiming_p[2]))
+     ,.num_stages_p(fma_latency_p-latency_dstr_p[0]-latency_dstr_p[1]-latency_dstr_p[2]))
    fma_retiming_chain
     (.clk_i(clk_i)
 
